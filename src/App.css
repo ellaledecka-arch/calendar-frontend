@@ -1,0 +1,161 @@
+/* CSS Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  background-color: #070F2B;
+  color: #9290C3;
+}
+
+/* App.css */
+.App {
+  text-align: center;
+  min-height: 100vh;
+  background-color: #070F2B;
+}
+
+.App-header {
+  background-color: #1B1A55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 1vmin);
+  color: #9290C3;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  background-color: #1B1A55;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #535C91;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+.form-group label {
+  margin-bottom: 5px;
+  color: #9290C3;
+}
+
+.form-group input {
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: #535C91;
+  color: #ffffff;
+}
+
+.submit-btn {
+  background-color: #535C91;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.submit-btn:hover {
+  background-color: #9290C3;
+}
+
+.toggle-form {
+  margin-top: 10px;
+  color: #9290C3;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  color: #9290C3;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 5px;
+  text-decoration: underline;
+}
+
+.logout-btn {
+  background-color: #535C91;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.error-message {
+  background-color: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  width: 300px;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Nové štýly pre kalendárovú aplikáciu */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #070F2B;
+}
+
+.app-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #1B1A55;
+  color: #9290C3;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.user-info h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #9290C3;
+}
+
+.user-info p {
+  margin: 5px 0 0 0;
+  font-size: 0.9rem;
+  color: #9290C3;
+}
+
+.app-content {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
