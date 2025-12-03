@@ -82,7 +82,7 @@
 /* MesaÄnÃ½ pohÄ¾ad */
 .month-view {
   padding: 10px;
-  border-radius: 20px;
+  border-radius: 50px;
 }
 
 .calendar-row {
@@ -104,7 +104,7 @@
 
 .calendar-day-header {
   font-weight: bold;
-  background-color: #9CCDE2;
+  background-color: #4D88A7;
   color: #fff;
 }
 
@@ -148,7 +148,7 @@
 
 .week-day {
   flex: 1;
-  border: 1px solid #535C91;
+  border: 0.5px solid #9CCDE2;
   display: flex;
   flex-direction: column;
   background-color: #1B1A55;
@@ -157,8 +157,6 @@
 .day-header {
   padding: 10px;
   text-align: center;
-  border-bottom: 1px solid #535C91;
-  background-color: #535C91;
   color: #fff;
 }
 
@@ -170,6 +168,7 @@
 .day-content {
   flex: 1;
   padding: 10px;
+  background-color: #EBF5FB;
 }
 
 /* DennÃ½ pohÄ¾ad */
@@ -178,14 +177,13 @@
   height: calc(100vh - 200px);
   min-height: 500px;
   overflow-y: auto;
-  background-color: #1B1A55;
+  background-color: #9CCDE2;
 }
 
 .day-header {
   padding: 15px;
   text-align: center;
-  border-bottom: 1px solid #535C91;
-  background-color: #535C91;
+  background-color: #4D88A7;
   color: #fff;
 }
 
@@ -197,21 +195,22 @@
 .day-hour {
   display: flex;
   min-height: 60px;
-  border-bottom: 1px solid #535C91;
+  border-bottom: 1.5px solid #9CCDE2;
 }
 
 .hour-label {
   width: 80px;
   padding: 5px;
   text-align: right;
-  border-right: 1px solid #535C91;
+  border-right: 0.5px solid #9CCDE2;
   font-size: 0.9rem;
-  color: #9290C3;
+  color: white;
 }
 
 .hour-content {
   flex: 1;
   padding: 5px;
+  background-color: #EBF5FB;
 }
 
 /* ResponzÃ­vne prispÃ´sobenie */
@@ -228,6 +227,7 @@
   
   .week-day {
     min-height: 100px;
+    border: 0.5px solid #9CCDE2;
   }
 }
 
@@ -353,7 +353,7 @@
 
 .day-hours {
   overflow-y: auto;
-  max-height: calc(100vh - 250px);
+  max-height: calc(100vh - 253px);
 }
 
 /* New styles for priority and shared events */
