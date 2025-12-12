@@ -6,7 +6,6 @@ CREATE TABLE `user` (
   UNIQUE KEY `Username` (`Username`),
   UNIQUE KEY `Email` (`Email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE `reminder` (
   `ReminderID` int NOT NULL AUTO_INCREMENT,
   `EventID` int NOT NULL,
@@ -26,7 +25,6 @@ CREATE TABLE `reminder` (
   CONSTRAINT `reminder_ibfk_1` FOREIGN KEY (`EventID`) REFERENCES `event` (`EventID`) ON DELETE CASCADE,
   CONSTRAINT `reminder_ibfk_2` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE `event_shared_users` (
   `event_id` int NOT NULL,
   `userPermissions_KEY` int NOT NULL,
@@ -37,7 +35,6 @@ CREATE TABLE `event_shared_users` (
   CONSTRAINT `event_shared_users_ibfk_1` FOREIGN KEY (`event_id`) REFERENCES `event` (`EventID`) ON DELETE CASCADE,
   CONSTRAINT `event_shared_users_ibfk_2` FOREIGN KEY (`userPermissions_KEY`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE `event` (
   `EventID` int NOT NULL AUTO_INCREMENT,
   `Title` varchar(255) NOT NULL,
@@ -56,3 +53,28 @@ CREATE TABLE `event` (
   KEY `UserID` (`UserID`),
   CONSTRAINT `event_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE `category` (
+  `CategoryID` int NOT NULL AUTO_INCREMENT,
+  `Name` varchar(100) NOT NULL,
+  `Color` varchar(20) DEFAULT NULL,
+  `Description` varchar(255) DEFAULT NULL,
+  `UserID` int DEFAULT NULL,
+  PRIMARY KEY (`CategoryID`),
+  KEY `UserID` (`UserID`),
+  CONSTRAINT `category_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE `notification` (
+  `NotificationID` int NOT NULL AUTO_INCREMENT,
+  `UserID` int NOT NULL,
+  `EventID` int DEFAULT NULL,
+  `Message` varchar(500) NOT NULL,
+  `Type` varchar(50) DEFAULT NULL,
+  `IsRead` tinyint(1) DEFAULT '0',
+  `CreatedAt` datetime NOT NULL,
+  `ReadAt` datetime DEFAULT NULL,
+  PRIMARY KEY (`NotificationID`),
+  KEY `UserID` (`UserID`),
+  KEY `EventID` (`EventID`),
+  CONSTRAINT `notification_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE,
+  CONSTRAINT `notification_ibfk_2` FOREIGN KEY (`EventID`) REFERENCES `event` (`EventID`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -1,10 +1,6 @@
-// EventService.js - Updated for simplified API
+// EventService.js
 const API_URL = "http://localhost:8080/api/v1/api/events";
 
-/**
- * Get all events (both owned and shared) for a user
- * This replaces: getAllUserEvents, getSharedEvents, getAllEventsInRange, getSharedEventsInRange
- */
 export const getAllEvents = async (userId, startDate = null, endDate = null) => {
   try {
     if (!userId) {
@@ -13,7 +9,6 @@ export const getAllEvents = async (userId, startDate = null, endDate = null) => 
     
     let url = `${API_URL}?userId=${userId}`;
     
-    // Add date range parameters if provided
     if (startDate && endDate) {
       const startISO = startDate.toISOString();
       const endISO = endDate.toISOString();
@@ -27,16 +22,12 @@ export const getAllEvents = async (userId, startDate = null, endDate = null) => 
       throw new Error(data.message || "Failed to fetch events");
     }
     
-    // Return the response which contains { ownedEvents: [...], sharedEvents: [...] }
     return data;
   } catch (error) {
     throw error;
   }
 };
 
-/**
- * Create a new event
- */
 export const createEvent = async (eventData, userId) => {
   try {
     if (!userId) {
@@ -63,9 +54,6 @@ export const createEvent = async (eventData, userId) => {
   }
 };
 
-/**
- * Update an existing event (including sharing settings)
- */
 export const updateEvent = async (eventId, eventData, userId) => {
   try {
     if (!userId) {
@@ -74,10 +62,8 @@ export const updateEvent = async (eventId, eventData, userId) => {
     
     console.log("DEBUG Frontend: Original eventData:", eventData);
     
-    // Create a copy of the data with properly formatted permissions
     const formattedData = { ...eventData };
     
-    // Convert the userPermissions object to use IDs as keys instead of User objects
     if (formattedData.userPermissions) {
       const idBasedPermissions = {};
       for (const userId in formattedData.userPermissions) {
@@ -111,9 +97,6 @@ export const updateEvent = async (eventId, eventData, userId) => {
   }
 };
 
-/**
- * Delete an event
- */
 export const deleteEvent = async (eventId, userId) => {
   try {
     if (!userId) {
@@ -135,9 +118,6 @@ export const deleteEvent = async (eventId, userId) => {
   }
 };
 
-/**
- * Get priority color for event display
- */
 export const getPriorityColor = (priority) => {
   switch (priority) {
     case 'HIGH':
@@ -151,104 +131,36 @@ export const getPriorityColor = (priority) => {
   }
 };
 
-// ============================================================================
-// BACKWARD COMPATIBILITY FUNCTIONS
-// These functions maintain compatibility with existing code that uses the old API
-// ============================================================================
-
-/**
- * @deprecated Use getAllEvents() instead
- * Note: getAllEvents() returns {ownedEvents: [...], sharedEvents: [...]}
- * This function combines them for backward compatibility
- */
 export const getAllUserEvents = async (userId) => {
   const data = await getAllEvents(userId);
-  // Combine both owned and shared events for backward compatibility
   return [...data.ownedEvents, ...data.sharedEvents];
 };
 
-/**
- * @deprecated Use getAllEvents() instead
- */
 export const getUserEvents = async (userId) => {
   const data = await getAllEvents(userId);
   return data.ownedEvents;
 };
 
-/**
- * @deprecated Use getAllEvents(userId, startDate, endDate) instead
- */
 export const getEventsInRange = async (userId, startDate, endDate) => {
   const data = await getAllEvents(userId, startDate, endDate);
   return data.ownedEvents;
 };
 
-/**
- * @deprecated Use getAllEvents(userId, startDate, endDate) instead
- */
 export const getAllEventsInRange = async (userId, startDate, endDate) => {
   const data = await getAllEvents(userId, startDate, endDate);
   return [...data.ownedEvents, ...data.sharedEvents];
 };
 
-/**
- * @deprecated Use getAllEvents() instead
- */
 export const getSharedEvents = async (userId) => {
   const data = await getAllEvents(userId);
   return data.sharedEvents;
 };
 
-/**
- * @deprecated Use getAllEvents(userId, startDate, endDate) instead
- */
 export const getSharedEventsInRange = async (userId, startDate, endDate) => {
   const data = await getAllEvents(userId, startDate, endDate);
   return data.sharedEvents;
 };
 
-/**
- * @deprecated Sharing is now handled through updateEvent()
- * To share an event, just update it with sharedWith and userPermissions fields
- */
-export const shareEvent = async (eventId, userId, permission = "VIEW") => {
-  console.warn("shareEvent() is deprecated. Use updateEvent() to modify sharing settings.");
-  // This is a simplified implementation for backward compatibility
-  throw new Error("Please use updateEvent() to modify event sharing settings");
-};
-
-/**
- * @deprecated Sharing is now handled through updateEvent()
- */
-export const shareEventWithUsers = async (eventId, userPermissions) => {
-  console.warn("shareEventWithUsers() is deprecated. Use updateEvent() to modify sharing settings.");
-  throw new Error("Please use updateEvent() to modify event sharing settings");
-};
-
-/**
- * @deprecated Sharing is now handled through updateEvent()
- */
-export const removeSharedUser = async (eventId, userId) => {
-  console.warn("removeSharedUser() is deprecated. Use updateEvent() to modify sharing settings.");
-  throw new Error("Please use updateEvent() to modify event sharing settings");
-};
-
-/**
- * @deprecated This functionality should be retrieved from the event object itself
- */
-export const getEventSharedUsers = async (eventId) => {
-  console.warn("getEventSharedUsers() is deprecated. Shared users are included in the event object.");
-  throw new Error("Shared users are included in the event object returned by getAllEvents()");
-};
-
-// ============================================================================
-// NOTIFICATION FUNCTIONS
-// ============================================================================
-
-/**
- * Get pending reminders for a user (that should be shown now)
- * This is called by NotificationCenter to check for reminders to display
- */
 export const getPendingReminders = async (userId) => {
   try {
     const response = await fetch(`${API_URL}/reminders/pending?userId=${userId}`);
@@ -264,10 +176,7 @@ export const getPendingReminders = async (userId) => {
   }
 };
 
-/**
- * Mark a reminder as sent (shown to user)
- * This prevents the same reminder from showing again
- */
+
 export const markReminderAsSent = async (reminderId) => {
   try {
     const response = await fetch(`${API_URL}/reminders/${reminderId}/mark-sent`, {

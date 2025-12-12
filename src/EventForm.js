@@ -244,11 +244,10 @@ const EventForm = ({
       setIsShared(false);
       setSharedWithUsers([]);
       setSharedUserPermissions({});
-      setReminderMinutes([15, 60]); // Default reminders for new events
+      setReminderMinutes([15, 60]);
     }
   }, [event, selectedDate]);
 
-  // Update color when priority changes
   useEffect(() => {
     if (!color || color === getPriorityColor('HIGH') || color === getPriorityColor('MEDIUM') || color === getPriorityColor('LOW')) {
       setColor(getPriorityColor(priority));
@@ -273,7 +272,6 @@ const EventForm = ({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Don't submit if in view-only mode
     if (!canEdit) {
       onCancel();
       return;
@@ -287,7 +285,6 @@ const EventForm = ({
       recurrenceEndDateTime = combineDateTime(recurrenceEndDate, '23:59');
     }
 
-    // In handleSubmit
     const eventData = {
       id: event ? event.id : null,
       title,
@@ -302,9 +299,7 @@ const EventForm = ({
       color,
       isShared,
       sharedWith: isShared ? sharedWithUsers : [],
-      // Make sure permissions use user IDs as keys
       userPermissions: isShared ? sharedUserPermissions : {},
-      // Include reminder minutes
       reminderMinutes: reminderMinutes
     };
 
@@ -324,7 +319,6 @@ const EventForm = ({
     return 'NovÃ¡ udalosÅ¥';
   };
 
-  // Render form buttons based on permissions
   const renderFormButtons = () => {
     if (!canEdit) {
       return (

@@ -25,7 +25,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 // API URL
-const API_URL = 'http://192.168.1.10:8080/api/v1/api';
+const API_URL = 'http://localhost:8080/api/v1/api';
 
 // Registrácia používateľa
 export const registerWithEmailAndPassword = async (email, password, username) => {
