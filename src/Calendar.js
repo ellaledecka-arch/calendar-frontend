@@ -24,12 +24,9 @@ const Calendar = ({ userId }) => {
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [showUserIdWarning, setShowUserIdWarning] = useState(false);
 
-  // Store the numeric userId
   const [numericUserId, setNumericUserId] = useState(null);
-
   const [viewOnly, setViewOnly] = useState(false);
 
-  // Convert userId to numeric when it changes
   useEffect(() => {
     if (userId) {
       setNumericUserId(parseInt(userId, 10));
@@ -39,15 +36,11 @@ const Calendar = ({ userId }) => {
     }
   }, [userId]);
 
-  // Log userId for debugging
   useEffect(() => {
     console.log('User ID from props:', userId);
     console.log('Numeric User ID:', numericUserId);
-
-    // For debugging - check localStorage directly
     console.log('localStorage userId:', localStorage.getItem('userId'));
 
-    // Force a refresh of userId from localStorage
     if (!userId) {
       const localStorageUserId = localStorage.getItem('userId');
       if (localStorageUserId) {
@@ -56,16 +49,14 @@ const Calendar = ({ userId }) => {
         setShowUserIdWarning(false);
       }
     }
-  }, [userId]);
+  }, [userId, numericUserId]);
 
-  // Filter states
   const [showOwnEvents, setShowOwnEvents] = useState(true);
   const [showSharedEvents, setShowSharedEvents] = useState(true);
   const [showHighPriority, setShowHighPriority] = useState(true);
   const [showMediumPriority, setShowMediumPriority] = useState(true);
   const [showLowPriority, setShowLowPriority] = useState(true);
 
-  // Fetch events when calendar view or date changes
   useEffect(() => {
     if (userId || numericUserId) {
       fetchEvents();
@@ -80,7 +71,6 @@ const Calendar = ({ userId }) => {
         return;
       }
 
-      // Get range of dates to fetch based on current view
       let startDate, endDate;
 
       if (currentView === 'day') {
@@ -89,39 +79,28 @@ const Calendar = ({ userId }) => {
 
         endDate = new Date(currentDate);
         endDate.setHours(23, 59, 59, 999);
-      }
-      else if (currentView === 'week') {
-        // Get start of week (Monday)
+      } else if (currentView === 'week') {
         startDate = new Date(currentDate);
         const day = startDate.getDay();
         const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
         startDate.setDate(diff);
         startDate.setHours(0, 0, 0, 0);
 
-        // End of week (Sunday)
         endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + 6);
         endDate.setHours(23, 59, 59, 999);
-      }
-      else if (currentView === 'month') {
-        // Start of month
+      } else if (currentView === 'month') {
         startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         startDate.setHours(0, 0, 0, 0);
 
-        // End of month
         endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         endDate.setHours(23, 59, 59, 999);
       }
 
-      // Add some buffer days to make sure we have events that might span into view
       startDate.setDate(startDate.getDate() - 7);
       endDate.setDate(endDate.getDate() + 7);
 
-      // Get all events (own and shared)
       const eventsData = await getAllUserEvents(idToUse);
-      // Here you would ideally use getAllEventsInRange(userId, startDate, endDate)
-
-      // Process recurring events
       const expandedEvents = processRecurringEvents(eventsData, startDate, endDate);
       setEvents(expandedEvents);
     } catch (error) {
@@ -129,12 +108,10 @@ const Calendar = ({ userId }) => {
     }
   };
 
-  // Function to process recurring events
   const processRecurringEvents = (events, startRange, endRange) => {
     let expandedEvents = [];
 
     events.forEach(event => {
-      // Add the original event if it's within range
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
 
@@ -142,18 +119,15 @@ const Calendar = ({ userId }) => {
         expandedEvents.push({ ...event });
       }
 
-      // Process recurring events
       if (event.recurrenceType && event.recurrenceType !== 'none') {
         const recurrenceEnd = event.recurrenceEnd ? new Date(event.recurrenceEnd) : null;
         let currentDate = new Date(eventStart);
 
-        // Set end limit for recurring event expansion
         const expansionEndDate = recurrenceEnd && recurrenceEnd < endRange
           ? recurrenceEnd
           : endRange;
 
         while (currentDate <= expansionEndDate) {
-          // Create next occurrence based on recurrence type
           let nextDate = new Date(currentDate);
 
           switch (event.recurrenceType) {
@@ -173,18 +147,14 @@ const Calendar = ({ userId }) => {
               break;
           }
 
-          // If next date is beyond our limits, break out
           if (nextDate > expansionEndDate) break;
 
-          // Calculate duration of event
           const duration = eventEnd.getTime() - eventStart.getTime();
 
-          // Create a new instance of the recurring event
           const newEventStart = new Date(nextDate);
           const newEventEnd = new Date(nextDate.getTime() + duration);
 
           if (newEventStart <= endRange && newEventEnd >= startRange) {
-            // Create a new occurrence event
             expandedEvents.push({
               ...event,
               id: `${event.id}-recurrence-${nextDate.getTime()}`,
@@ -195,7 +165,6 @@ const Calendar = ({ userId }) => {
             });
           }
 
-          // Move to next occurrence
           currentDate = nextDate;
         }
       }
@@ -204,7 +173,6 @@ const Calendar = ({ userId }) => {
     return expandedEvents;
   };
 
-  // Helper function to filter events based on ownership and priority
   const getFilteredEvents = (events) => {
     return events.filter(event => {
       const userIdToCheck = userId ? parseInt(userId, 10) : numericUserId;
@@ -228,7 +196,6 @@ const Calendar = ({ userId }) => {
     });
   };
 
-  // Helper functions for dates
   const getDaysInMonth = (year, month) => {
     return new Date(year, month + 1, 0).getDate();
   };
@@ -248,7 +215,6 @@ const Calendar = ({ userId }) => {
     return dayNames[day];
   };
 
-  // Navigation functions
   const goToPreviousMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
@@ -261,7 +227,6 @@ const Calendar = ({ userId }) => {
     setCurrentDate(new Date());
   };
 
-  // Event handling functions
   const handleAddEvent = () => {
     if (!userId && !numericUserId) {
       alert("Pred vytvorením udalosti sa musíte prihlásiť.");
@@ -281,15 +246,12 @@ const Calendar = ({ userId }) => {
 
   const handleDeleteEvent = async (event) => {
     try {
-      // For recurring instances, just delete the original
       const eventId = event.originalEventId || event.id;
 
-      // Only delete from database if it's not a recurrence instance
       if (!event.isRecurrenceInstance) {
         await deleteEvent(eventId);
       }
 
-      // Refresh events
       fetchEvents();
       setShowEventMenu(false);
     } catch (error) {
@@ -297,7 +259,6 @@ const Calendar = ({ userId }) => {
     }
   };
 
-  // Function to share an event
   const handleShareEvent = (event) => {
     setSelectedEvent(event);
     setShowEventForm(true);
@@ -306,7 +267,6 @@ const Calendar = ({ userId }) => {
 
   const handleFormSubmit = async (eventData) => {
     try {
-      // Make sure we have a userId before proceeding
       const idToUse = userId ? parseInt(userId, 10) : numericUserId;
       if (!idToUse) {
         alert("Pred vytvorením udalosti sa musíte prihlásiť.");
@@ -314,14 +274,11 @@ const Calendar = ({ userId }) => {
       }
 
       if (eventData.id) {
-        // Update existing event
         await updateEvent(eventData.id, eventData);
       } else {
-        // Create new event - make sure userId is passed as a number
         await createEvent(eventData, idToUse);
       }
 
-      // Refresh events and close form
       fetchEvents();
       setShowEventForm(false);
     } catch (error) {
@@ -332,7 +289,7 @@ const Calendar = ({ userId }) => {
 
   const handleFormCancel = () => {
     setShowEventForm(false);
-    setViewOnly(false); // Reset viewOnly state
+    setViewOnly(false);
   };
 
   const handleDayClick = (year, month, day) => {
@@ -347,18 +304,13 @@ const Calendar = ({ userId }) => {
     }
   };
 
-  // Get event display color based on priority and ownership
   const getEventColor = (event) => {
-    // Check if event has a custom color
     if (event.color) {
       return event.color;
     }
-
-    // Default colors based on priority
     return getPriorityColor(event.priority || 'MEDIUM');
   };
 
-  // Check if current user is the owner of the event
   const isEventOwner = (event) => {
     const userIdToCheck = userId ? parseInt(userId, 10) : numericUserId;
     return event.user && event.user.id === userIdToCheck;
@@ -368,7 +320,6 @@ const Calendar = ({ userId }) => {
     e.stopPropagation();
     setSelectedEventForMenu(event);
 
-    // Position menu near click
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuPosition({
       top: rect.bottom + window.scrollY,
@@ -378,7 +329,6 @@ const Calendar = ({ userId }) => {
     setShowEventMenu(true);
   };
 
-  // Close event menu when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
       setShowEventMenu(false);
@@ -393,7 +343,6 @@ const Calendar = ({ userId }) => {
     };
   }, [showEventMenu]);
 
-  // Filter events for a specific day
   const getEventsForDay = (year, month, day) => {
     const filteredEvents = getFilteredEvents(events);
 
@@ -402,7 +351,6 @@ const Calendar = ({ userId }) => {
       const eventEnd = new Date(event.endTime);
       const dayDate = new Date(year, month, day);
 
-      // Set time to start of day and end of day for comparison
       const dayStart = new Date(dayDate);
       dayStart.setHours(0, 0, 0, 0);
 
@@ -410,14 +358,13 @@ const Calendar = ({ userId }) => {
       dayEnd.setHours(23, 59, 59, 999);
 
       return (
-        (eventStart >= dayStart && eventStart <= dayEnd) || // Event starts today
-        (eventEnd >= dayStart && eventEnd <= dayEnd) || // Event ends today
-        (eventStart <= dayStart && eventEnd >= dayEnd) // Event spans across today
+        (eventStart >= dayStart && eventStart <= dayEnd) ||
+        (eventEnd >= dayStart && eventEnd <= dayEnd) ||
+        (eventStart <= dayStart && eventEnd >= dayEnd)
       );
     });
   };
 
-  // Filter events for a specific hour
   const getEventsForHour = (date, hour) => {
     const filteredEvents = getFilteredEvents(events);
     const year = date.getFullYear();
@@ -428,52 +375,42 @@ const Calendar = ({ userId }) => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
 
-      // Start and end of the hour
       const hourStart = new Date(year, month, day, hour, 0, 0);
       const hourEnd = new Date(year, month, day, hour, 59, 59);
 
       return (
-        // Event starts during this hour
         (eventStart >= hourStart && eventStart <= hourEnd) ||
-        // Event ends during this hour
         (eventEnd >= hourStart && eventEnd <= hourEnd) ||
-        // Event spans across this hour
         (eventStart <= hourStart && eventEnd >= hourEnd)
       );
     });
   };
 
-  // Month view rendering
   const renderMonthView = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = getDaysInMonth(year, month);
     const firstDay = getFirstDayOfMonth(year, month);
 
-    // Create grid
     let dayGrid = [];
 
-    // Add weekday headers
     const weekDays = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
     const headerRow = weekDays.map((day, index) => (
       <div key={`header-${index}`} className="calendar-day-header">{day}</div>
     ));
     dayGrid.push(<div key="header-row" className="calendar-row">{headerRow}</div>);
 
-    // Empty cells before first day of month
     let daysArray = [];
     for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) {
       daysArray.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
     }
 
-    // Days of month
     const today = new Date();
     for (let day = 1; day <= daysInMonth; day++) {
       const isToday = day === today.getDate() &&
         month === today.getMonth() &&
         year === today.getFullYear();
 
-      // Get events for this day
       const dayEvents = getEventsForDay(year, month, day);
 
       daysArray.push(
@@ -493,7 +430,6 @@ const Calendar = ({ userId }) => {
         </div>
       );
 
-      // New row after each week
       if ((daysArray.length) % 7 === 0 || day === daysInMonth) {
         dayGrid.push(<div key={`row-${day}`} className="calendar-row">{daysArray}</div>);
         daysArray = [];
@@ -507,23 +443,21 @@ const Calendar = ({ userId }) => {
     );
   };
 
-  // Add function to handle view-only event details
   const handleViewEventDetails = (event) => {
     setSelectedEvent(event);
     setShowEventForm(true);
-    setViewOnly(true); // Add this state variable
+    setViewOnly(true);
     setShowEventMenu(false);
   };
 
   const getEventPermissionClass = (event) => {
     if (isEventOwner(event)) return 'event-owner';
 
-    const userId = numericUserId?.toString() || (userId ? userId.toString() : null);
-    const permission = event.userPermissions?.[userId] || 'VIEW';
+    const userIdStr = numericUserId?.toString() || (userId ? userId.toString() : null);
+    const permission = event.userPermissions?.[userIdStr] || 'VIEW';
     return permission === 'EDIT' || permission === 'ADMIN' ? 'can-edit' : 'view-only';
   };
 
-  // Update event rendering to include permission class
   const renderEventDot = (event) => {
     const eventColor = getEventColor(event);
     const permissionClass = getEventPermissionClass(event);
@@ -542,7 +476,6 @@ const Calendar = ({ userId }) => {
     );
   };
 
-  // Helper function to get permission label
   const getPermissionLabel = (event) => {
     if (isEventOwner(event)) return 'Vlastník';
 
@@ -553,14 +486,17 @@ const Calendar = ({ userId }) => {
       default: return 'Len na čítanie';
     }
   };
-  // Week view rendering
+
+  // ---------- WEEK VIEW ----------
   const renderWeekView = () => {
     const currentDay = new Date(currentDate);
     const day = currentDay.getDay();
 
-    // Get Monday of current week
     const monday = new Date(currentDate);
     monday.setDate(currentDay.getDate() - (day === 0 ? 6 : day - 1));
+
+    const today = new Date();
+    const now = new Date();
 
     const days = [];
     for (let i = 0; i < 7; i++) {
@@ -575,7 +511,6 @@ const Calendar = ({ userId }) => {
         month === today.getMonth() &&
         year === today.getFullYear();
 
-      // Get events for this day
       const dayEvents = getEventsForDay(year, month, dayNum);
 
       days.push(
@@ -589,24 +524,46 @@ const Calendar = ({ userId }) => {
             <div className="date-number">{date.getDate()}.{date.getMonth() + 1}.</div>
           </div>
           <div className="day-content">
-            {dayEvents.map(event => {
-              const eventColor = getEventColor(event);
-              const isOwner = isEventOwner(event);
-              const ownerClass = isOwner ? 'event-owner' : 'event-shared';
-              const priorityClass = `event-priority-${event.priority || 'MEDIUM'}`;
+            {[...Array(24)].map((_, hour) => {
+              const isCurrentHour = isToday && hour === now.getHours();
 
               return (
                 <div
-                  key={event.id}
-                  className={`week-event ${ownerClass} ${priorityClass}`}
-                  onClick={(e) => handleEventClick(e, event)}
-                  style={{ backgroundColor: eventColor }}
+                  key={hour}
+                  className={`hour-row ${isCurrentHour ? 'current-hour' : ''}`}
                 >
-                  <div className="event-time">
-                    {event.isAllDay ? 'Celý deň' :
-                      `${new Date(event.startTime).getHours()}:${String(new Date(event.startTime).getMinutes()).padStart(2, '0')}`}
+                  <div className="hour-label">
+                    {hour}:00
                   </div>
-                  <div className="event-title">{event.title}</div>
+
+                  <div className="hour-cell">
+                    {dayEvents
+                      .filter(event => new Date(event.startTime).getHours() === hour)
+                      .map(event => {
+                        const eventColor = getEventColor(event);
+                        const isOwner = isEventOwner(event);
+                        const ownerClass = isOwner ? 'event-owner' : 'event-shared';
+                        const priorityClass = `event-priority-${event.priority || 'MEDIUM'}`;
+
+                        return (
+                          <div
+                            key={event.id}
+                            className={`week-event ${ownerClass} ${priorityClass}`}
+                            onClick={(e) => handleEventClick(e, event)}
+                            style={{ backgroundColor: eventColor }}
+                          >
+                            <div className="event-time">
+                              {event.isAllDay
+                                ? 'Celý deň'
+                                : `${new Date(event.startTime).getHours()}:${String(
+                                  new Date(event.startTime).getMinutes()
+                                ).padStart(2, '0')}`}
+                            </div>
+                            <div className="event-title">{event.title}</div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               );
             })}
@@ -622,16 +579,17 @@ const Calendar = ({ userId }) => {
     );
   };
 
-  // Day view rendering
+  // ---------- DAY VIEW ----------
   const renderDayView = () => {
     const hours = [];
 
     for (let hour = 0; hour < 24; hour++) {
-      // Get events for this hour
       const hourEvents = getEventsForHour(currentDate, hour);
 
       hours.push(
-        <div key={`hour-${hour}`} className="day-hour">
+        <div
+          key={`hour-${hour}`}
+          className={`day-hour ${hour === new Date().getHours() ? "current-hour-day" : ""}`}>
           <div className="hour-label">{hour}:00</div>
           <div
             className="hour-content"
@@ -687,7 +645,6 @@ const Calendar = ({ userId }) => {
     );
   };
 
-  // Render legend for event colors
   const renderCalendarLegend = () => {
     return (
       <div className="calendar-legend">
@@ -715,7 +672,6 @@ const Calendar = ({ userId }) => {
     );
   };
 
-  // Render filter controls
   const renderFilterControls = () => {
     return (
       <div className="calendar-filters">
@@ -777,7 +733,6 @@ const Calendar = ({ userId }) => {
     );
   };
 
-  // Today's date
   const today = new Date();
 
   return (
@@ -823,13 +778,9 @@ const Calendar = ({ userId }) => {
             <button onClick={handleAddEvent} className="add-event-btn">+ Udalosť</button>
           </div>
         </div>
-        
       </div>
 
-      {/* Add legend for event colors */}
       {renderCalendarLegend()}
-
-      {/* Add filter controls */}
       {renderFilterControls()}
 
       <div className="calendar-body">
@@ -838,7 +789,6 @@ const Calendar = ({ userId }) => {
         {currentView === 'day' && renderDayView()}
       </div>
 
-      {/* Event form modal */}
       {showEventForm && (
         <>
           <div className="modal-backdrop"></div>
@@ -848,12 +798,11 @@ const Calendar = ({ userId }) => {
             event={selectedEvent}
             selectedDate={selectedDate}
             currentUserId={numericUserId || (userId ? parseInt(userId, 10) : null)}
-            viewOnly={viewOnly} // Add this prop
+            viewOnly={viewOnly}
           />
         </>
       )}
 
-      {/* Event context menu */}
       {showEventMenu && (
         <div
           className="event-menu"
@@ -886,5 +835,3 @@ const Calendar = ({ userId }) => {
 };
 
 export default Calendar;
-
-// jflnasf
