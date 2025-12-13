@@ -3,12 +3,9 @@ import './Calendar.css';
 import EventForm from './EventForm';
 import {
   createEvent,
-  getAllUserEvents,
+  getAllEvents,
   updateEvent,
   deleteEvent,
-  getAllEventsInRange,
-  shareEvent,
-  removeSharedUser,
   getPriorityColor
 } from './EventService';
 
@@ -37,25 +34,14 @@ const Calendar = ({ userId }) => {
   }, [userId]);
 
   useEffect(() => {
-    console.log('User ID from props:', userId);
-    console.log('Numeric User ID:', numericUserId);
-    console.log('localStorage userId:', localStorage.getItem('userId'));
-
     if (!userId) {
-      const localStorageUserId = localStorage.getItem('userId');
-      if (localStorageUserId) {
-        console.log('Found userId in localStorage:', localStorageUserId);
-        setNumericUserId(parseInt(localStorageUserId, 10));
+      const storedId = localStorage.getItem('userId');
+      if (storedId) {
+        setNumericUserId(parseInt(storedId, 10));
         setShowUserIdWarning(false);
       }
     }
-  }, [userId, numericUserId]);
-
-  const [showOwnEvents, setShowOwnEvents] = useState(true);
-  const [showSharedEvents, setShowSharedEvents] = useState(true);
-  const [showHighPriority, setShowHighPriority] = useState(true);
-  const [showMediumPriority, setShowMediumPriority] = useState(true);
-  const [showLowPriority, setShowLowPriority] = useState(true);
+  }, [userId]);
 
   useEffect(() => {
     if (userId || numericUserId) {
@@ -66,20 +52,18 @@ const Calendar = ({ userId }) => {
   const fetchEvents = async () => {
     try {
       const idToUse = userId || numericUserId;
-      if (!idToUse) {
-        console.error('Cannot fetch events - no userId available');
-        return;
-      }
+      if (!idToUse) return;
 
       let startDate, endDate;
 
       if (currentView === 'day') {
         startDate = new Date(currentDate);
-        startDate.setHours(0, 0, 0, 0);
-
         endDate = new Date(currentDate);
+        startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
-      } else if (currentView === 'week') {
+      }
+
+      else if (currentView === 'week') {
         startDate = new Date(currentDate);
         const day = startDate.getDay();
         const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
@@ -87,22 +71,26 @@ const Calendar = ({ userId }) => {
         startDate.setHours(0, 0, 0, 0);
 
         endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 6);
+        endDate.setDate(startDate.getDate() + 6);
         endDate.setHours(23, 59, 59, 999);
-      } else if (currentView === 'month') {
-        startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-        startDate.setHours(0, 0, 0, 0);
+      }
 
+      else if (currentView === 'month') {
+        startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
       }
 
       startDate.setDate(startDate.getDate() - 7);
       endDate.setDate(endDate.getDate() + 7);
 
-      const eventsData = await getAllUserEvents(idToUse);
+      const response = await getAllEvents(idToUse, startDate, endDate);
+      const eventsData = [...response.ownedEvents, ...response.sharedEvents];
+
       const expandedEvents = processRecurringEvents(eventsData, startDate, endDate);
       setEvents(expandedEvents);
+
     } catch (error) {
       console.error('Failed to fetch events:', error);
     }
@@ -115,17 +103,18 @@ const Calendar = ({ userId }) => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
 
+      // Include original event if it lies within range
       if (eventStart <= endRange && eventEnd >= startRange) {
         expandedEvents.push({ ...event });
       }
 
+      // Process recurring events
       if (event.recurrenceType && event.recurrenceType !== 'none') {
         const recurrenceEnd = event.recurrenceEnd ? new Date(event.recurrenceEnd) : null;
         let currentDate = new Date(eventStart);
 
-        const expansionEndDate = recurrenceEnd && recurrenceEnd < endRange
-          ? recurrenceEnd
-          : endRange;
+        const expansionEndDate =
+          recurrenceEnd && recurrenceEnd < endRange ? recurrenceEnd : endRange;
 
         while (currentDate <= expansionEndDate) {
           let nextDate = new Date(currentDate);
@@ -150,7 +139,6 @@ const Calendar = ({ userId }) => {
           if (nextDate > expansionEndDate) break;
 
           const duration = eventEnd.getTime() - eventStart.getTime();
-
           const newEventStart = new Date(nextDate);
           const newEventEnd = new Date(nextDate.getTime() + duration);
 
@@ -176,6 +164,7 @@ const Calendar = ({ userId }) => {
   const getFilteredEvents = (events) => {
     return events.filter(event => {
       const userIdToCheck = userId ? parseInt(userId, 10) : numericUserId;
+
       const isOwner = event.user && event.user.id === userIdToCheck;
       const isShared = !isOwner;
       const priority = event.priority || 'MEDIUM';
@@ -205,13 +194,17 @@ const Calendar = ({ userId }) => {
   };
 
   const getMonthName = (month) => {
-    const monthNames = ['Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún',
-      'Júl', 'August', 'September', 'Október', 'November', 'December'];
+    const monthNames = [
+      'Január', 'Február', 'Marec', 'Apríl', 'Máj', 'Jún',
+      'Júl', 'August', 'September', 'Október', 'November', 'December'
+    ];
     return monthNames[month];
   };
 
   const getDayName = (day) => {
-    const dayNames = ['Nedeľa', 'Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota'];
+    const dayNames = [
+      'Nedeľa', 'Pondelok', 'Utorok', 'Streda', 'Štvrtok', 'Piatok', 'Sobota'
+    ];
     return dayNames[day];
   };
 
@@ -249,13 +242,14 @@ const Calendar = ({ userId }) => {
       const eventId = event.originalEventId || event.id;
 
       if (!event.isRecurrenceInstance) {
-        await deleteEvent(eventId);
+        const idToUse = userId ? parseInt(userId, 10) : numericUserId;
+        await deleteEvent(eventId, idToUse);
       }
 
       fetchEvents();
       setShowEventMenu(false);
     } catch (error) {
-      console.error('Failed to delete event:', error);
+      console.error("Failed to delete event:", error);
     }
   };
 
@@ -274,7 +268,7 @@ const Calendar = ({ userId }) => {
       }
 
       if (eventData.id) {
-        await updateEvent(eventData.id, eventData);
+        await updateEvent(eventData.id, eventData, idToUse);
       } else {
         await createEvent(eventData, idToUse);
       }
@@ -282,7 +276,7 @@ const Calendar = ({ userId }) => {
       fetchEvents();
       setShowEventForm(false);
     } catch (error) {
-      console.error('Failed to save event:', error);
+      console.error("Failed to save event:", error);
       alert(`Chyba pri ukladaní udalosti: ${error.message}`);
     }
   };
@@ -297,18 +291,16 @@ const Calendar = ({ userId }) => {
     setSelectedDate(selectedDate);
     setCurrentDate(selectedDate);
 
-    if (currentView === 'month') {
-      setCurrentView('day');
+    if (currentView === "month") {
+      setCurrentView("day");
     } else {
       handleAddEvent();
     }
   };
 
   const getEventColor = (event) => {
-    if (event.color) {
-      return event.color;
-    }
-    return getPriorityColor(event.priority || 'MEDIUM');
+    if (event.color) return event.color;
+    return getPriorityColor(event.priority || "MEDIUM");
   };
 
   const isEventOwner = (event) => {
@@ -323,39 +315,32 @@ const Calendar = ({ userId }) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuPosition({
       top: rect.bottom + window.scrollY,
-      left: rect.left + window.scrollX
+      left: rect.left + window.scrollX,
     });
 
     setShowEventMenu(true);
   };
 
   useEffect(() => {
-    const handleClickOutside = () => {
-      setShowEventMenu(false);
-    };
+    const handleClickOutside = () => setShowEventMenu(false);
+    if (showEventMenu) document.addEventListener("click", handleClickOutside);
 
-    if (showEventMenu) {
-      document.addEventListener('click', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
+    return () => document.removeEventListener("click", handleClickOutside);
   }, [showEventMenu]);
 
   const getEventsForDay = (year, month, day) => {
     const filteredEvents = getFilteredEvents(events);
+    const dayDate = new Date(year, month, day);
+
+    const dayStart = new Date(dayDate);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const dayEnd = new Date(dayDate);
+    dayEnd.setHours(23, 59, 59, 999);
 
     return filteredEvents.filter(event => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
-      const dayDate = new Date(year, month, day);
-
-      const dayStart = new Date(dayDate);
-      dayStart.setHours(0, 0, 0, 0);
-
-      const dayEnd = new Date(dayDate);
-      dayEnd.setHours(23, 59, 59, 999);
 
       return (
         (eventStart >= dayStart && eventStart <= dayEnd) ||
@@ -365,6 +350,170 @@ const Calendar = ({ userId }) => {
     });
   };
 
+  // --------------------- MONTH VIEW ---------------------
+  const renderMonthView = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month);
+
+    let dayGrid = [];
+
+    // Weekday headers — fixed UTF8 encoding
+    const weekDays = ["Po", "Ut", "St", "Št", "Pi", "So", "Ne"];
+
+    const headerRow = weekDays.map((day, index) => (
+      <div key={`header-${index}`} className="calendar-day-header">
+        {day}
+      </div>
+    ));
+    dayGrid.push(
+      <div key="header-row" className="calendar-row">
+        {headerRow}
+      </div>
+    );
+
+    // Empty cells before first day
+    let daysArray = [];
+    const emptyCells = firstDay === 0 ? 6 : firstDay - 1;
+    for (let i = 0; i < emptyCells; i++) {
+      daysArray.push(
+        <div key={`empty-${i}`} className="calendar-day empty"></div>
+      );
+    }
+
+    const today = new Date();
+
+    // Real month days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const isToday =
+        day === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear();
+
+      const dayEvents = getEventsForDay(year, month, day);
+
+      daysArray.push(
+        <div
+          key={`day-${day}`}
+          className={`calendar-day ${isToday ? "today" : ""}`}
+          onClick={() => handleDayClick(year, month, day)}
+        >
+          <span className="day-number">{day}</span>
+
+          <div className="day-events">
+            {dayEvents.slice(0, 3).map(event => renderEventDot(event))}
+            {dayEvents.length > 3 && (
+              <div className="more-events">+{dayEvents.length - 3} viac</div>
+            )}
+          </div>
+        </div>
+      );
+
+      if (daysArray.length % 7 === 0 || day === daysInMonth) {
+        dayGrid.push(
+          <div key={`row-${day}`} className="calendar-row">
+            {daysArray}
+          </div>
+        );
+        daysArray = [];
+      }
+    }
+
+    return <div className="month-view">{dayGrid}</div>;
+  };
+
+  // ---------- WEEK VIEW ----------
+  const renderWeekView = () => {
+    const currentDay = new Date(currentDate);
+    const day = currentDay.getDay();
+
+    // Compute Monday of the current week
+    const monday = new Date(currentDate);
+    monday.setDate(currentDay.getDate() - (day === 0 ? 6 : day - 1));
+
+    const today = new Date();
+    const now = new Date();
+
+    const days = [];
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const dayNum = date.getDate();
+
+      const isToday =
+        dayNum === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear();
+
+      const dayEvents = getEventsForDay(year, month, dayNum);
+
+      days.push(
+        <div
+          key={`week-day-${i}`}
+          className={`week-day ${isToday ? "today" : ""}`}
+          onClick={() => handleDayClick(year, month, dayNum)}
+        >
+          <div className="day-header">
+            <div>{getDayName(date.getDay()).substring(0, 3)}</div>
+            <div className="date-number">{date.getDate()}.{month + 1}.</div>
+          </div>
+
+          <div className="day-content">
+            {[...Array(24)].map((_, hour) => {
+              const isCurrentHour = isToday && hour === now.getHours();
+
+              return (
+                <div
+                  key={hour}
+                  className={`hour-row ${isCurrentHour ? "current-hour" : ""}`}
+                >
+                  <div className="hour-label">{hour}:00</div>
+
+                  <div className="hour-cell">
+                    {dayEvents
+                      .filter(event => new Date(event.startTime).getHours() === hour)
+                      .map(event => {
+                        const eventColor = getEventColor(event);
+                        const isOwner = isEventOwner(event);
+                        const ownerClass = isOwner ? "event-owner" : "event-shared";
+                        const priorityClass = `event-priority-${event.priority || "MEDIUM"}`;
+
+                        return (
+                          <div
+                            key={event.id}
+                            className={`week-event ${ownerClass} ${priorityClass}`}
+                            onClick={(e) => handleEventClick(e, event)}
+                            style={{ backgroundColor: eventColor }}
+                          >
+                            <div className="event-time">
+                              {event.isAllDay
+                                ? "Celý deň"
+                                : `${new Date(event.startTime).getHours()}:${String(
+                                    new Date(event.startTime).getMinutes()
+                                  ).padStart(2, "0")}`}
+                            </div>
+                            <div className="event-title">{event.title}</div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    return <div className="week-view">{days}</div>;
+  };
+
+  // ---------- DAY VIEW ----------
   const getEventsForHour = (date, hour) => {
     const filteredEvents = getFilteredEvents(events);
     const year = date.getFullYear();
@@ -386,211 +535,21 @@ const Calendar = ({ userId }) => {
     });
   };
 
-  const renderMonthView = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDay = getFirstDayOfMonth(year, month);
-
-    let dayGrid = [];
-
-    const weekDays = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
-    const headerRow = weekDays.map((day, index) => (
-      <div key={`header-${index}`} className="calendar-day-header">{day}</div>
-    ));
-    dayGrid.push(<div key="header-row" className="calendar-row">{headerRow}</div>);
-
-    let daysArray = [];
-    for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) {
-      daysArray.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
-    }
-
-    const today = new Date();
-    for (let day = 1; day <= daysInMonth; day++) {
-      const isToday = day === today.getDate() &&
-        month === today.getMonth() &&
-        year === today.getFullYear();
-
-      const dayEvents = getEventsForDay(year, month, day);
-
-      daysArray.push(
-        <div
-          key={`day-${day}`}
-          className={`calendar-day ${isToday ? 'today' : ''}`}
-          onClick={() => handleDayClick(year, month, day)}
-        >
-          <span className="day-number">{day}</span>
-
-          <div className="day-events">
-            {dayEvents.slice(0, 3).map(event => renderEventDot(event))}
-            {dayEvents.length > 3 && (
-              <div className="more-events">+{dayEvents.length - 3} viac</div>
-            )}
-          </div>
-        </div>
-      );
-
-      if ((daysArray.length) % 7 === 0 || day === daysInMonth) {
-        dayGrid.push(<div key={`row-${day}`} className="calendar-row">{daysArray}</div>);
-        daysArray = [];
-      }
-    }
-
-    return (
-      <div className="month-view">
-        {dayGrid}
-      </div>
-    );
-  };
-
-  const handleViewEventDetails = (event) => {
-    setSelectedEvent(event);
-    setShowEventForm(true);
-    setViewOnly(true);
-    setShowEventMenu(false);
-  };
-
-  const getEventPermissionClass = (event) => {
-    if (isEventOwner(event)) return 'event-owner';
-
-    const userIdStr = numericUserId?.toString() || (userId ? userId.toString() : null);
-    const permission = event.userPermissions?.[userIdStr] || 'VIEW';
-    return permission === 'EDIT' || permission === 'ADMIN' ? 'can-edit' : 'view-only';
-  };
-
-  const renderEventDot = (event) => {
-    const eventColor = getEventColor(event);
-    const permissionClass = getEventPermissionClass(event);
-    const priorityClass = `event-priority-${event.priority || 'MEDIUM'}`;
-
-    return (
-      <div
-        key={event.id}
-        className={`event-dot ${permissionClass} ${priorityClass}`}
-        onClick={(e) => handleEventClick(e, event)}
-        title={`${event.title} (${getPermissionLabel(event)})`}
-        style={{ backgroundColor: eventColor }}
-      >
-        {event.title}
-      </div>
-    );
-  };
-
-  const getPermissionLabel = (event) => {
-    if (isEventOwner(event)) return 'Vlastník';
-
-    const permission = event.userPermissions?.[numericUserId] || 'VIEW';
-    switch (permission) {
-      case 'EDIT': return 'Úpravy';
-      case 'ADMIN': return 'Administrátor';
-      default: return 'Len na čítanie';
-    }
-  };
-
-  // ---------- WEEK VIEW ----------
-  const renderWeekView = () => {
-    const currentDay = new Date(currentDate);
-    const day = currentDay.getDay();
-
-    const monday = new Date(currentDate);
-    monday.setDate(currentDay.getDate() - (day === 0 ? 6 : day - 1));
-
-    const today = new Date();
-    const now = new Date();
-
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(monday);
-      date.setDate(monday.getDate() + i);
-
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const dayNum = date.getDate();
-
-      const isToday = dayNum === today.getDate() &&
-        month === today.getMonth() &&
-        year === today.getFullYear();
-
-      const dayEvents = getEventsForDay(year, month, dayNum);
-
-      days.push(
-        <div
-          key={`week-day-${i}`}
-          className={`week-day ${isToday ? 'today' : ''}`}
-          onClick={() => handleDayClick(year, month, dayNum)}
-        >
-          <div className="day-header">
-            <div>{getDayName(date.getDay()).substring(0, 3)}</div>
-            <div className="date-number">{date.getDate()}.{date.getMonth() + 1}.</div>
-          </div>
-          <div className="day-content">
-            {[...Array(24)].map((_, hour) => {
-              const isCurrentHour = isToday && hour === now.getHours();
-
-              return (
-                <div
-                  key={hour}
-                  className={`hour-row ${isCurrentHour ? 'current-hour' : ''}`}
-                >
-                  <div className="hour-label">
-                    {hour}:00
-                  </div>
-
-                  <div className="hour-cell">
-                    {dayEvents
-                      .filter(event => new Date(event.startTime).getHours() === hour)
-                      .map(event => {
-                        const eventColor = getEventColor(event);
-                        const isOwner = isEventOwner(event);
-                        const ownerClass = isOwner ? 'event-owner' : 'event-shared';
-                        const priorityClass = `event-priority-${event.priority || 'MEDIUM'}`;
-
-                        return (
-                          <div
-                            key={event.id}
-                            className={`week-event ${ownerClass} ${priorityClass}`}
-                            onClick={(e) => handleEventClick(e, event)}
-                            style={{ backgroundColor: eventColor }}
-                          >
-                            <div className="event-time">
-                              {event.isAllDay
-                                ? 'Celý deň'
-                                : `${new Date(event.startTime).getHours()}:${String(
-                                  new Date(event.startTime).getMinutes()
-                                ).padStart(2, '0')}`}
-                            </div>
-                            <div className="event-title">{event.title}</div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="week-view">
-        {days}
-      </div>
-    );
-  };
-
-  // ---------- DAY VIEW ----------
   const renderDayView = () => {
     const hours = [];
 
     for (let hour = 0; hour < 24; hour++) {
       const hourEvents = getEventsForHour(currentDate, hour);
+      const isCurrentHour = hour === new Date().getHours() &&
+                            currentDate.toDateString() === new Date().toDateString();
 
       hours.push(
         <div
           key={`hour-${hour}`}
-          className={`day-hour ${hour === new Date().getHours() ? "current-hour-day" : ""}`}>
+          className={`day-hour ${isCurrentHour ? "current-hour-day" : ""}`}
+        >
           <div className="hour-label">{hour}:00</div>
+
           <div
             className="hour-content"
             onClick={() => {
@@ -603,8 +562,8 @@ const Calendar = ({ userId }) => {
             {hourEvents.map(event => {
               const eventColor = getEventColor(event);
               const isOwner = isEventOwner(event);
-              const ownerClass = isOwner ? 'event-owner' : 'event-shared';
-              const priorityClass = `event-priority-${event.priority || 'MEDIUM'}`;
+              const ownerClass = isOwner ? "event-owner" : "event-shared";
+              const priorityClass = `event-priority-${event.priority || "MEDIUM"}`;
 
               return (
                 <div
@@ -614,15 +573,16 @@ const Calendar = ({ userId }) => {
                   style={{ backgroundColor: eventColor }}
                 >
                   <div className="event-title">
-                    {event.isAllDay ? '(Celý deň) ' : ''}
+                    {event.isAllDay ? "(Celý deň) " : ""}
                     {event.title}
                   </div>
+
                   {!event.isAllDay && (
                     <div className="event-time">
                       {new Date(event.startTime).getHours()}:
-                      {String(new Date(event.startTime).getMinutes()).padStart(2, '0')} -
+                      {String(new Date(event.startTime).getMinutes()).padStart(2, "0")} –
                       {new Date(event.endTime).getHours()}:
-                      {String(new Date(event.endTime).getMinutes()).padStart(2, '0')}
+                      {String(new Date(event.endTime).getMinutes()).padStart(2, "0")}
                     </div>
                   )}
                 </div>
@@ -636,11 +596,52 @@ const Calendar = ({ userId }) => {
     return (
       <div className="day-view">
         <div className="day-header">
-          <h3>{getDayName(currentDate.getDay())}, {currentDate.getDate()}. {getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}</h3>
+          <h3>
+            {getDayName(currentDate.getDay())}, {currentDate.getDate()}.{" "}
+            {getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}
+          </h3>
         </div>
-        <div className="day-hours">
-          {hours}
-        </div>
+
+        <div className="day-hours">{hours}</div>
+      </div>
+    );
+  };
+
+  const getPermissionLabel = (event) => {
+    if (isEventOwner(event)) return "Vlastník";
+
+    const permission = event.userPermissions?.[numericUserId] || "VIEW";
+    switch (permission) {
+      case "EDIT": return "Úpravy";
+      case "ADMIN": return "Administrátor";
+      default: return "Len na čítanie";
+    }
+  };
+
+  const getEventPermissionClass = (event) => {
+    if (isEventOwner(event)) return "event-owner";
+
+    const userIdStr = numericUserId?.toString() || (userId ? userId.toString() : null);
+    const permission = event.userPermissions?.[userIdStr] || "VIEW";
+    return permission === "EDIT" || permission === "ADMIN"
+      ? "can-edit"
+      : "view-only";
+  };
+
+  const renderEventDot = (event) => {
+    const eventColor = getEventColor(event);
+    const permissionClass = getEventPermissionClass(event);
+    const priorityClass = `event-priority-${event.priority || "MEDIUM"}`;
+
+    return (
+      <div
+        key={event.id}
+        className={`event-dot ${permissionClass} ${priorityClass}`}
+        title={`${event.title} (${getPermissionLabel(event)})`}
+        onClick={(e) => handleEventClick(e, event)}
+        style={{ backgroundColor: eventColor }}
+      >
+        {event.title}
       </div>
     );
   };
@@ -652,18 +653,22 @@ const Calendar = ({ userId }) => {
           <div className="legend-color legend-owned"></div>
           <span>Vlastné udalosti</span>
         </div>
+
         <div className="legend-item">
           <div className="legend-color legend-shared"></div>
           <span>Zdieľané udalosti</span>
         </div>
+
         <div className="legend-item">
           <div className="legend-color legend-priority-HIGH"></div>
           <span>Vysoká priorita</span>
         </div>
+
         <div className="legend-item">
           <div className="legend-color legend-priority-MEDIUM"></div>
           <span>Stredná priorita</span>
         </div>
+
         <div className="legend-item">
           <div className="legend-color legend-priority-LOW"></div>
           <span>Nízka priorita</span>
@@ -740,42 +745,51 @@ const Calendar = ({ userId }) => {
       {showUserIdWarning && (
         <div className="user-id-warning">
           <strong>Upozornenie:</strong> Nie je k dispozícii ID používateľa. Pre správne fungovanie kalendára sa prihláste.
-          <button onClick={() => setShowUserIdWarning(false)} className="close-warning-btn">×</button>
+          <button
+            onClick={() => setShowUserIdWarning(false)}
+            className="close-warning-btn"
+          >
+            ×
+          </button>
         </div>
       )}
 
       <div className="calendar-header">
         <div className="view-selector">
           <button
-            className={currentView === 'day' ? 'active' : ''}
-            onClick={() => setCurrentView('day')}
+            className={currentView === "day" ? "active" : ""}
+            onClick={() => setCurrentView("day")}
           >
             Deň
           </button>
           <button
-            className={currentView === 'week' ? 'active' : ''}
-            onClick={() => setCurrentView('week')}
+            className={currentView === "week" ? "active" : ""}
+            onClick={() => setCurrentView("week")}
           >
             Týždeň
           </button>
           <button
-            className={currentView === 'month' ? 'active' : ''}
-            onClick={() => setCurrentView('month')}
+            className={currentView === "month" ? "active" : ""}
+            onClick={() => setCurrentView("month")}
           >
             Mesiac
           </button>
         </div>
+
         <div className="calendar-group">
           <div className="calendar-title">
             <h2>{getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}</h2>
           </div>
+
           <div className="calendar-nav">
             <div className="nav-group">
               <button onClick={goToPreviousMonth}>&lt;</button>
               <button onClick={goToToday}>Dnes</button>
               <button onClick={goToNextMonth}>&gt;</button>
             </div>
-            <button onClick={handleAddEvent} className="add-event-btn">+ Udalosť</button>
+            <button onClick={handleAddEvent} className="add-event-btn">
+              + Udalosť
+            </button>
           </div>
         </div>
       </div>
@@ -784,11 +798,12 @@ const Calendar = ({ userId }) => {
       {renderFilterControls()}
 
       <div className="calendar-body">
-        {currentView === 'month' && renderMonthView()}
-        {currentView === 'week' && renderWeekView()}
-        {currentView === 'day' && renderDayView()}
+        {currentView === "month" && renderMonthView()}
+        {currentView === "week" && renderWeekView()}
+        {currentView === "day" && renderDayView()}
       </div>
 
+      {/* Event form modal */}
       {showEventForm && (
         <>
           <div className="modal-backdrop"></div>
@@ -803,30 +818,42 @@ const Calendar = ({ userId }) => {
         </>
       )}
 
-      {showEventMenu && (
+      {/* Event context menu */}
+      {showEventMenu && selectedEventForMenu && (
         <div
           className="event-menu"
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`
           }}
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           {(isEventOwner(selectedEventForMenu) ||
-            (selectedEventForMenu.userPermissions?.[numericUserId] === 'EDIT' ||
-              selectedEventForMenu.userPermissions?.[numericUserId] === 'ADMIN')) && (
-              <button onClick={() => handleEditEvent(selectedEventForMenu)}>Upraviť</button>
-            )}
-          {isEventOwner(selectedEventForMenu) && (
-            <button onClick={() => handleShareEvent(selectedEventForMenu)}>Zdieľať</button>
+            (selectedEventForMenu.userPermissions?.[numericUserId] === "EDIT" ||
+             selectedEventForMenu.userPermissions?.[numericUserId] === "ADMIN")) && (
+            <button onClick={() => handleEditEvent(selectedEventForMenu)}>
+              Upraviť
+            </button>
           )}
+
+          {isEventOwner(selectedEventForMenu) && (
+            <button onClick={() => handleShareEvent(selectedEventForMenu)}>
+              Zdieľať
+            </button>
+          )}
+
           {(isEventOwner(selectedEventForMenu) ||
-            selectedEventForMenu.userPermissions?.[numericUserId] === 'ADMIN') && (
-              <button onClick={() => handleDeleteEvent(selectedEventForMenu)}>Vymazať</button>
-            )}
+            selectedEventForMenu.userPermissions?.[numericUserId] === "ADMIN") && (
+            <button onClick={() => handleDeleteEvent(selectedEventForMenu)}>
+              Vymazať
+            </button>
+          )}
+
           {!isEventOwner(selectedEventForMenu) && (
-            <button onClick={() => handleViewEventDetails(selectedEventForMenu)}>Zobraziť detaily</button>
+            <button onClick={() => handleViewEventDetails(selectedEventForMenu)}>
+              Zobraziť detaily
+            </button>
           )}
         </div>
       )}

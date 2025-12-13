@@ -1,6 +1,33 @@
 // EventService.js
 const API_URL = "http://localhost:8080/api/v1/api/events";
 
+export const getAllEvents = async (userId, startDate = null, endDate = null) => {
+  try {
+    if (!userId) {
+      throw new Error("User ID is required to fetch events");
+    }
+    
+    let url = `${API_URL}?userId=${userId}`;
+    
+    if (startDate && endDate) {
+      const startISO = startDate.toISOString();
+      const endISO = endDate.toISOString();
+      url += `&start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`;
+    }
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch events");
+    }
+    
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const createEvent = async (eventData, userId) => {
   try {
     if (!userId) {
@@ -27,82 +54,16 @@ export const createEvent = async (eventData, userId) => {
   }
 };
 
-export const getUserEvents = async (userId) => {
+export const updateEvent = async (eventId, eventData, userId) => {
   try {
-    const response = await fetch(`${API_URL}/user/${userId}`);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch events");
+    if (!userId) {
+      throw new Error("User ID is required to update an event");
     }
     
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getAllUserEvents = async (userId) => {
-  try {
-    const response = await fetch(`${API_URL}/user/${userId}/all`);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch events");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getEventsInRange = async (userId, startDate, endDate) => {
-  try {
-    const startISO = startDate.toISOString();
-    const endISO = endDate.toISOString();
-    const response = await fetch(
-      `${API_URL}/user/${userId}/range?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`
-    );
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch events");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getAllEventsInRange = async (userId, startDate, endDate) => {
-  try {
-    const startISO = startDate.toISOString();
-    const endISO = endDate.toISOString();
-    const response = await fetch(
-      `${API_URL}/user/${userId}/all/range?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`
-    );
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch events");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const updateEvent = async (eventId, eventData) => {
-  try {
     console.log("DEBUG Frontend: Original eventData:", eventData);
     
-    // Create a copy of the data with properly formatted permissions
     const formattedData = { ...eventData };
     
-    // Convert the userPermissions object to use IDs as keys instead of User objects
     if (formattedData.userPermissions) {
       const idBasedPermissions = {};
       for (const userId in formattedData.userPermissions) {
@@ -116,7 +77,7 @@ export const updateEvent = async (eventId, eventData) => {
     
     console.log("DEBUG Frontend: Full payload being sent:", JSON.stringify(formattedData, null, 2));
     
-    const response = await fetch(`${API_URL}/${eventId}`, {
+    const response = await fetch(`${API_URL}/${eventId}?userId=${userId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -136,122 +97,19 @@ export const updateEvent = async (eventId, eventData) => {
   }
 };
 
-export const deleteEvent = async (eventId) => {
+export const deleteEvent = async (eventId, userId) => {
   try {
-    const response = await fetch(`${API_URL}/${eventId}`, {
+    if (!userId) {
+      throw new Error("User ID is required to delete an event");
+    }
+    
+    const response = await fetch(`${API_URL}/${eventId}?userId=${userId}`, {
       method: "DELETE"
     });
     const data = await response.json();
     
     if (!response.ok) {
       throw new Error(data.message || "Failed to delete event");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const shareEvent = async (eventId, userId, permission = "VIEW") => {
-  try {
-    const response = await fetch(`${API_URL}/${eventId}/share/${userId}?permission=${permission}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      }
-    });
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to share event");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const shareEventWithUsers = async (eventId, userPermissions) => {
-  try {
-    const response = await fetch(`${API_URL}/${eventId}/share`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(userPermissions),
-    });
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to share event with users");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const removeSharedUser = async (eventId, userId) => {
-  try {
-    const response = await fetch(`${API_URL}/${eventId}/share/${userId}`, {
-      method: "DELETE"
-    });
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to remove shared user");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getSharedEvents = async (userId) => {
-  try {
-    const response = await fetch(`${API_URL}/shared/${userId}`);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch shared events");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getSharedEventsInRange = async (userId, startDate, endDate) => {
-  try {
-    const startISO = startDate.toISOString();
-    const endISO = endDate.toISOString();
-    const response = await fetch(
-      `${API_URL}/shared/${userId}/range?start=${encodeURIComponent(startISO)}&end=${encodeURIComponent(endISO)}`
-    );
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch shared events");
-    }
-    
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const getEventSharedUsers = async (eventId) => {
-  try {
-    const response = await fetch(`${API_URL}/${eventId}/shared-users`);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch shared users");
     }
     
     return data;
@@ -270,5 +128,69 @@ export const getPriorityColor = (priority) => {
       return '#4CAF50';
     default:
       return '#2196F3';
+  }
+};
+
+export const getAllUserEvents = async (userId) => {
+  const data = await getAllEvents(userId);
+  return [...data.ownedEvents, ...data.sharedEvents];
+};
+
+export const getUserEvents = async (userId) => {
+  const data = await getAllEvents(userId);
+  return data.ownedEvents;
+};
+
+export const getEventsInRange = async (userId, startDate, endDate) => {
+  const data = await getAllEvents(userId, startDate, endDate);
+  return data.ownedEvents;
+};
+
+export const getAllEventsInRange = async (userId, startDate, endDate) => {
+  const data = await getAllEvents(userId, startDate, endDate);
+  return [...data.ownedEvents, ...data.sharedEvents];
+};
+
+export const getSharedEvents = async (userId) => {
+  const data = await getAllEvents(userId);
+  return data.sharedEvents;
+};
+
+export const getSharedEventsInRange = async (userId, startDate, endDate) => {
+  const data = await getAllEvents(userId, startDate, endDate);
+  return data.sharedEvents;
+};
+
+export const getPendingReminders = async (userId) => {
+  try {
+    const response = await fetch(`${API_URL}/reminders/pending?userId=${userId}`);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch pending reminders");
+    }
+    
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+
+export const markReminderAsSent = async (reminderId) => {
+  try {
+    const response = await fetch(`${API_URL}/reminders/${reminderId}/mark-sent`, {
+      method: "PUT",
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to mark reminder as sent");
+    }
+    
+    return data;
+  } catch (error) {
+    throw error;
   }
 };
