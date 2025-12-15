@@ -23,7 +23,13 @@ const Calendar = ({ userId }) => {
 
   const [numericUserId, setNumericUserId] = useState(null);
   const [viewOnly, setViewOnly] = useState(false);
+  const [showOwnEvents, setShowOwnEvents] = useState(true);
+  const [showSharedEvents, setShowSharedEvents] = useState(true);
+  const [showHighPriority, setShowHighPriority] = useState(true);
+  const [showMediumPriority, setShowMediumPriority] = useState(true);
+  const [showLowPriority, setShowLowPriority] = useState(true);
 
+  // LOAD USER ID
   useEffect(() => {
     if (userId) {
       setNumericUserId(parseInt(userId, 10));
@@ -43,10 +49,12 @@ const Calendar = ({ userId }) => {
     }
   }, [userId]);
 
+  // FETCH EVENTS WHEN DATE OR VIEW CHANGES
   useEffect(() => {
     if (userId || numericUserId) {
       fetchEvents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, numericUserId, currentDate, currentView]);
 
   const fetchEvents = async () => {
@@ -61,27 +69,27 @@ const Calendar = ({ userId }) => {
         endDate = new Date(currentDate);
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
-      }
+      } else if (currentView === 'week') {
+        // FIXED: compute Monday correctly
+        const tmp = new Date(currentDate);
+        const day = tmp.getDay();
+        const mondayOffset = day === 0 ? -6 : 1 - day;
 
-      else if (currentView === 'week') {
-        startDate = new Date(currentDate);
-        const day = startDate.getDay();
-        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
-        startDate.setDate(diff);
+        startDate = new Date(tmp);
+        startDate.setDate(tmp.getDate() + mondayOffset);
         startDate.setHours(0, 0, 0, 0);
 
         endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 6);
         endDate.setHours(23, 59, 59, 999);
-      }
-
-      else if (currentView === 'month') {
+      } else if (currentView === 'month') {
         startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
       }
 
+      // buffer +/- 7 dní
       startDate.setDate(startDate.getDate() - 7);
       endDate.setDate(endDate.getDate() + 7);
 
@@ -90,7 +98,6 @@ const Calendar = ({ userId }) => {
 
       const expandedEvents = processRecurringEvents(eventsData, startDate, endDate);
       setEvents(expandedEvents);
-
     } catch (error) {
       console.error('Failed to fetch events:', error);
     }
@@ -103,12 +110,10 @@ const Calendar = ({ userId }) => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
 
-      // Include original event if it lies within range
       if (eventStart <= endRange && eventEnd >= startRange) {
         expandedEvents.push({ ...event });
       }
 
-      // Process recurring events
       if (event.recurrenceType && event.recurrenceType !== 'none') {
         const recurrenceEnd = event.recurrenceEnd ? new Date(event.recurrenceEnd) : null;
         let currentDate = new Date(eventStart);
@@ -208,16 +213,67 @@ const Calendar = ({ userId }) => {
     return dayNames[day];
   };
 
+  // ---------- NAVIGATION HELPERS ----------
   const goToPreviousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, prev.getDate()));
   };
 
   const goToNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, prev.getDate()));
   };
 
   const goToToday = () => {
     setCurrentDate(new Date());
+  };
+
+  const goToPreviousWeek = () => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setDate(prev.getDate() - 7);
+      return d;
+    });
+  };
+
+  const goToNextWeek = () => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setDate(prev.getDate() + 7);
+      return d;
+    });
+  };
+
+  const goToPreviousDay = () => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setDate(prev.getDate() - 1);
+      return d;
+    });
+  };
+
+  const goToNextDay = () => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setDate(prev.getDate() + 1);
+      return d;
+    });
+  };
+
+  // general arrows based on currentView
+  const goToPrevious = () => {
+    if (currentView === 'day') goToPreviousDay();
+    else if (currentView === 'week') goToPreviousWeek();
+    else goToPreviousMonth();
+  };
+
+  const goToNext = () => {
+    if (currentView === 'day') goToNextDay();
+    else if (currentView === 'week') goToNextWeek();
+    else goToNextMonth();
+  };
+
+  const switchView = (view) => {
+    // nemeníme currentDate, iba meníme typ pohľadu
+    setCurrentView(view);
   };
 
   const handleAddEvent = () => {
@@ -233,6 +289,7 @@ const Calendar = ({ userId }) => {
 
   const handleEditEvent = (event) => {
     setSelectedEvent(event);
+    setViewOnly(false);
     setShowEventForm(true);
     setShowEventMenu(false);
   };
@@ -255,6 +312,14 @@ const Calendar = ({ userId }) => {
 
   const handleShareEvent = (event) => {
     setSelectedEvent(event);
+    setViewOnly(false);
+    setShowEventForm(true);
+    setShowEventMenu(false);
+  };
+
+  const handleViewEventDetails = (event) => {
+    setSelectedEvent(event);
+    setViewOnly(true);
     setShowEventForm(true);
     setShowEventMenu(false);
   };
@@ -275,6 +340,7 @@ const Calendar = ({ userId }) => {
 
       fetchEvents();
       setShowEventForm(false);
+      setViewOnly(false);
     } catch (error) {
       console.error("Failed to save event:", error);
       alert(`Chyba pri ukladaní udalosti: ${error.message}`);
@@ -359,9 +425,8 @@ const Calendar = ({ userId }) => {
 
     let dayGrid = [];
 
-    // Weekday headers — fixed UTF8 encoding
+    // Weekday headers
     const weekDays = ["Po", "Ut", "St", "Št", "Pi", "So", "Ne"];
-
     const headerRow = weekDays.map((day, index) => (
       <div key={`header-${index}`} className="calendar-day-header">
         {day}
@@ -373,7 +438,7 @@ const Calendar = ({ userId }) => {
       </div>
     );
 
-    // Empty cells before first day
+    // Empty cells before month start
     let daysArray = [];
     const emptyCells = firstDay === 0 ? 6 : firstDay - 1;
     for (let i = 0; i < emptyCells; i++) {
@@ -384,7 +449,7 @@ const Calendar = ({ userId }) => {
 
     const today = new Date();
 
-    // Real month days
+    // Real days
     for (let day = 1; day <= daysInMonth; day++) {
       const isToday =
         day === today.getDate() &&
@@ -428,7 +493,7 @@ const Calendar = ({ userId }) => {
     const currentDay = new Date(currentDate);
     const day = currentDay.getDay();
 
-    // Compute Monday of the current week
+    // Fix Monday calculation
     const monday = new Date(currentDate);
     monday.setDate(currentDay.getDate() - (day === 0 ? 6 : day - 1));
 
@@ -460,12 +525,19 @@ const Calendar = ({ userId }) => {
         >
           <div className="day-header">
             <div>{getDayName(date.getDay()).substring(0, 3)}</div>
-            <div className="date-number">{date.getDate()}.{month + 1}.</div>
+            <div className="date-number">
+              {date.getDate()}.{month + 1}.
+            </div>
           </div>
 
           <div className="day-content">
             {[...Array(24)].map((_, hour) => {
-              const isCurrentHour = isToday && hour === now.getHours();
+              const isCurrentHour =
+                isToday && hour === now.getHours();
+
+              const eventsForHour = dayEvents.filter(
+                event => new Date(event.startTime).getHours() === hour
+              );
 
               return (
                 <div
@@ -475,32 +547,30 @@ const Calendar = ({ userId }) => {
                   <div className="hour-label">{hour}:00</div>
 
                   <div className="hour-cell">
-                    {dayEvents
-                      .filter(event => new Date(event.startTime).getHours() === hour)
-                      .map(event => {
-                        const eventColor = getEventColor(event);
-                        const isOwner = isEventOwner(event);
-                        const ownerClass = isOwner ? "event-owner" : "event-shared";
-                        const priorityClass = `event-priority-${event.priority || "MEDIUM"}`;
+                    {eventsForHour.map(event => {
+                      const eventColor = getEventColor(event);
+                      const isOwner = isEventOwner(event);
+                      const ownerClass = isOwner ? "event-owner" : "event-shared";
+                      const priorityClass = `event-priority-${event.priority || "MEDIUM"}`;
 
-                        return (
-                          <div
-                            key={event.id}
-                            className={`week-event ${ownerClass} ${priorityClass}`}
-                            onClick={(e) => handleEventClick(e, event)}
-                            style={{ backgroundColor: eventColor }}
-                          >
-                            <div className="event-time">
-                              {event.isAllDay
-                                ? "Celý deň"
-                                : `${new Date(event.startTime).getHours()}:${String(
-                                    new Date(event.startTime).getMinutes()
-                                  ).padStart(2, "0")}`}
-                            </div>
-                            <div className="event-title">{event.title}</div>
+                      return (
+                        <div
+                          key={event.id}
+                          className={`week-event ${ownerClass} ${priorityClass}`}
+                          onClick={(e) => handleEventClick(e, event)}
+                          style={{ backgroundColor: eventColor }}
+                        >
+                          <div className="event-time">
+                            {event.isAllDay
+                              ? "Celý deň"
+                              : `${new Date(event.startTime).getHours()}:${String(
+                                  new Date(event.startTime).getMinutes()
+                                ).padStart(2, "0")}`}
                           </div>
-                        );
-                      })}
+                          <div className="event-title">{event.title}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -540,8 +610,9 @@ const Calendar = ({ userId }) => {
 
     for (let hour = 0; hour < 24; hour++) {
       const hourEvents = getEventsForHour(currentDate, hour);
-      const isCurrentHour = hour === new Date().getHours() &&
-                            currentDate.toDateString() === new Date().toDateString();
+      const isCurrentHour =
+        hour === new Date().getHours() &&
+        currentDate.toDateString() === new Date().toDateString();
 
       hours.push(
         <div
@@ -621,8 +692,10 @@ const Calendar = ({ userId }) => {
   const getEventPermissionClass = (event) => {
     if (isEventOwner(event)) return "event-owner";
 
-    const userIdStr = numericUserId?.toString() || (userId ? userId.toString() : null);
+    const userIdStr =
+      numericUserId?.toString() || (userId ? userId.toString() : null);
     const permission = event.userPermissions?.[userIdStr] || "VIEW";
+
     return permission === "EDIT" || permission === "ADMIN"
       ? "can-edit"
       : "view-only";
@@ -738,13 +811,13 @@ const Calendar = ({ userId }) => {
     );
   };
 
-  const today = new Date();
-
+  // ---------- RETURN UI ----------
   return (
     <div className="calendar-container">
       {showUserIdWarning && (
         <div className="user-id-warning">
-          <strong>Upozornenie:</strong> Nie je k dispozícii ID používateľa. Pre správne fungovanie kalendára sa prihláste.
+          <strong>Upozornenie:</strong> Nie je k dispozícii ID používateľa.
+          Prihláste sa.
           <button
             onClick={() => setShowUserIdWarning(false)}
             className="close-warning-btn"
@@ -758,19 +831,19 @@ const Calendar = ({ userId }) => {
         <div className="view-selector">
           <button
             className={currentView === "day" ? "active" : ""}
-            onClick={() => setCurrentView("day")}
+            onClick={() => switchView("day")}
           >
             Deň
           </button>
           <button
             className={currentView === "week" ? "active" : ""}
-            onClick={() => setCurrentView("week")}
+            onClick={() => switchView("week")}
           >
             Týždeň
           </button>
           <button
             className={currentView === "month" ? "active" : ""}
-            onClick={() => setCurrentView("month")}
+            onClick={() => switchView("month")}
           >
             Mesiac
           </button>
@@ -778,15 +851,19 @@ const Calendar = ({ userId }) => {
 
         <div className="calendar-group">
           <div className="calendar-title">
-            <h2>{getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}</h2>
+            <h2>
+              {getMonthName(currentDate.getMonth())}{" "}
+              {currentDate.getFullYear()}
+            </h2>
           </div>
 
           <div className="calendar-nav">
             <div className="nav-group">
-              <button onClick={goToPreviousMonth}>&lt;</button>
+              <button onClick={goToPrevious}>‹</button>
               <button onClick={goToToday}>Dnes</button>
-              <button onClick={goToNextMonth}>&gt;</button>
+              <button onClick={goToNext}>›</button>
             </div>
+
             <button onClick={handleAddEvent} className="add-event-btn">
               + Udalosť
             </button>
@@ -803,7 +880,7 @@ const Calendar = ({ userId }) => {
         {currentView === "day" && renderDayView()}
       </div>
 
-      {/* Event form modal */}
+      {/* EVENT FORM (modal) */}
       {showEventForm && (
         <>
           <div className="modal-backdrop"></div>
@@ -812,26 +889,27 @@ const Calendar = ({ userId }) => {
             onCancel={handleFormCancel}
             event={selectedEvent}
             selectedDate={selectedDate}
-            currentUserId={numericUserId || (userId ? parseInt(userId, 10) : null)}
+            currentUserId={numericUserId ?? (userId ? parseInt(userId, 10) : null)}
             viewOnly={viewOnly}
           />
         </>
       )}
 
-      {/* Event context menu */}
+      {/* EVENT CONTEXT MENU */}
       {showEventMenu && selectedEventForMenu && (
         <div
           className="event-menu"
           style={{
             position: "absolute",
             top: `${menuPosition.top}px`,
-            left: `${menuPosition.left}px`
+            left: `${menuPosition.left}px`,
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {(isEventOwner(selectedEventForMenu) ||
-            (selectedEventForMenu.userPermissions?.[numericUserId] === "EDIT" ||
-             selectedEventForMenu.userPermissions?.[numericUserId] === "ADMIN")) && (
+            ["EDIT", "ADMIN"].includes(
+              selectedEventForMenu.userPermissions?.[numericUserId]
+            )) && (
             <button onClick={() => handleEditEvent(selectedEventForMenu)}>
               Upraviť
             </button>
@@ -844,14 +922,17 @@ const Calendar = ({ userId }) => {
           )}
 
           {(isEventOwner(selectedEventForMenu) ||
-            selectedEventForMenu.userPermissions?.[numericUserId] === "ADMIN") && (
+            selectedEventForMenu.userPermissions?.[numericUserId] ===
+              "ADMIN") && (
             <button onClick={() => handleDeleteEvent(selectedEventForMenu)}>
               Vymazať
             </button>
           )}
 
           {!isEventOwner(selectedEventForMenu) && (
-            <button onClick={() => handleViewEventDetails(selectedEventForMenu)}>
+            <button
+              onClick={() => handleViewEventDetails(selectedEventForMenu)}
+            >
               Zobraziť detaily
             </button>
           )}
